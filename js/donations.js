@@ -2,10 +2,16 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Local storage keys
     const STORAGE_KEYS = {
-        DONATIONS: 'feedthefuture_donations',
-        REQUESTS: 'feedthefuture_requests',
+        DOACOES: 'feedthefuture_doacoes',
+        AGENDAMENTOS: 'feedthefuture_agendamentos',
+        ITENS: 'feedthefuture_itens',
+        CATEGORIAS: 'feedthefuture_categorias',
+        IMPACTOS: 'feedthefuture_impactos',
         USER_DATA: 'feedthefuture_user_data'
     };
+    
+    // Initialize categories if they don't exist
+    initializeCategories();
     
     // Get user data
     function getUser() {
@@ -23,6 +29,18 @@ document.addEventListener('DOMContentLoaded', function() {
     // Donation form
     const donationForm = document.getElementById('donationForm');
     if (donationForm) {
+        // Populate categories dropdown in the form
+        const foodCategorySelect = document.getElementById('foodCategory');
+        if (foodCategorySelect) {
+            const categorias = getCategorias();
+            categorias.forEach(categoria => {
+                const option = document.createElement('option');
+                option.value = categoria.id;
+                option.textContent = categoria.nome;
+                foodCategorySelect.appendChild(option);
+            });
+        }
+        
         donationForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -34,7 +52,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            if (user.type !== 'business') {
+            if (user.tipo !== 'business') {
                 showToast('Apenas estabelecimentos podem cadastrar doações', 'warning');
                 closeModal(document.getElementById('donationModal'));
                 return;
@@ -48,31 +66,56 @@ document.addEventListener('DOMContentLoaded', function() {
             const expirationDate = document.getElementById('expirationDate').value;
             const address = document.getElementById('address').value;
             const pickupTimes = document.getElementById('pickup-times').value;
+            const tipoEntrega = document.getElementById('deliveryType').value; // Tipo_Entrega no DER
             
             // Validate
-            if (!foodName || !foodCategory || !quantity || !expirationDate || !address || !pickupTimes) {
+            if (!foodName || !foodCategory || !quantity || !expirationDate || !address || !pickupTimes || !tipoEntrega) {
                 showToast('Por favor, preencha todos os campos', 'error');
                 return;
             }
             
-            // Create donation object
-            const donation = {
-                id: 'donation_' + Math.random().toString(36).substr(2, 9),
-                foodName,
-                foodCategory,
-                quantity: `${quantity} ${unit}`,
-                expirationDate,
-                address,
-                pickupTimes,
-                donorId: user.id,
-                donorName: user.name,
-                donorEmail: user.email,
-                status: 'available', // available, requested, completed
-                createdAt: new Date().toISOString()
+            // Create item entry
+            const itemId = 'item_' + Math.random().toString(36).substr(2, 9);
+            const item = {
+                id: itemId,
+                descricao: foodName,
+                estado: 'Bom', // Default state
+                id_doador: user.id,
+                id_categoria: foodCategory
             };
             
-            // Save to local storage
-            saveDonation(donation);
+            // Save item
+            saveItem(item);
+            
+            // Create donation object (doacoes table)
+            const doacaoId = 'doacao_' + Math.random().toString(36).substr(2, 9);
+            const doacao = {
+                id: doacaoId,
+                id_item: itemId,
+                id_ong: null, // Will be assigned when an ONG requests it
+                data_doacao: new Date().toISOString(),
+                tipo_entrega: tipoEntrega,
+                quantidade: quantity,
+                unidade: unit,
+                endereco_coleta: address,
+                horarios_coleta: pickupTimes,
+                expirationDate: expirationDate,
+                status: 'available' // available, requested, completed
+            };
+            
+            // Save donation
+            saveDoacao(doacao);
+            
+            // Calculate and save environmental impact
+            const impacto = {
+                id: 'impacto_' + Math.random().toString(36).substr(2, 9),
+                id_doacao: doacaoId,
+                quantidade_alimentos: parseFloat(quantity),
+                reducao_co2: calculaReducaoCO2(quantity, unit),
+                data_calculo: new Date().toISOString()
+            };
+            
+            saveImpacto(impacto);
             
             // Show success toast
             showToast('Doação cadastrada com sucesso!', 'success');
@@ -86,29 +129,113 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Save donation to local storage
-    function saveDonation(donation) {
-        let donations = [];
-        const storedDonations = localStorage.getItem(STORAGE_KEYS.DONATIONS);
+    // Calculate CO2 reduction based on food quantity
+    function calculaReducaoCO2(quantidade, unidade) {
+        // Approximate calculation: 2.5kg CO2 per kg food waste avoided
+        let quantidadeEmKg = parseFloat(quantidade);
         
-        if (storedDonations) {
+        if (unidade !== 'kg') {
+            // Convert to kg if unit is different
+            // This is a simplification; in a real app you'd have conversion factors for different food types
+            quantidadeEmKg = quantidadeEmKg * 0.3; // Assuming average weight
+        }
+        
+        return quantidadeEmKg * 2.5;
+    }
+    
+    // Save item to local storage
+    function saveItem(item) {
+        let itens = [];
+        const storedItens = localStorage.getItem(STORAGE_KEYS.ITENS);
+        
+        if (storedItens) {
             try {
-                donations = JSON.parse(storedDonations);
+                itens = JSON.parse(storedItens);
             } catch (error) {
-                donations = [];
+                itens = [];
             }
         }
         
-        donations.push(donation);
-        localStorage.setItem(STORAGE_KEYS.DONATIONS, JSON.stringify(donations));
+        itens.push(item);
+        localStorage.setItem(STORAGE_KEYS.ITENS, JSON.stringify(itens));
     }
     
-    // Get all donations
-    function getDonations() {
-        const storedDonations = localStorage.getItem(STORAGE_KEYS.DONATIONS);
-        if (storedDonations) {
+    // Save donation to local storage
+    function saveDoacao(doacao) {
+        let doacoes = [];
+        const storedDoacoes = localStorage.getItem(STORAGE_KEYS.DOACOES);
+        
+        if (storedDoacoes) {
             try {
-                return JSON.parse(storedDonations);
+                doacoes = JSON.parse(storedDoacoes);
+            } catch (error) {
+                doacoes = [];
+            }
+        }
+        
+        doacoes.push(doacao);
+        localStorage.setItem(STORAGE_KEYS.DOACOES, JSON.stringify(doacoes));
+    }
+    
+    // Save environmental impact
+    function saveImpacto(impacto) {
+        let impactos = [];
+        const storedImpactos = localStorage.getItem(STORAGE_KEYS.IMPACTOS);
+        
+        if (storedImpactos) {
+            try {
+                impactos = JSON.parse(storedImpactos);
+            } catch (error) {
+                impactos = [];
+            }
+        }
+        
+        impactos.push(impacto);
+        localStorage.setItem(STORAGE_KEYS.IMPACTOS, JSON.stringify(impactos));
+    }
+    
+    // Save agendamento to local storage
+    function saveAgendamento(agendamento) {
+        let agendamentos = [];
+        const storedAgendamentos = localStorage.getItem(STORAGE_KEYS.AGENDAMENTOS);
+        
+        if (storedAgendamentos) {
+            try {
+                agendamentos = JSON.parse(storedAgendamentos);
+            } catch (error) {
+                agendamentos = [];
+            }
+        }
+        
+        agendamentos.push(agendamento);
+        localStorage.setItem(STORAGE_KEYS.AGENDAMENTOS, JSON.stringify(agendamentos));
+    }
+    
+    // Initialize categories
+    function initializeCategories() {
+        const storedCategorias = localStorage.getItem(STORAGE_KEYS.CATEGORIAS);
+        
+        if (!storedCategorias) {
+            const categorias = [
+                { id: 'cat_1', nome: 'Frutas e Vegetais', descricao: 'Alimentos frescos como frutas e vegetais' },
+                { id: 'cat_2', nome: 'Grãos', descricao: 'Arroz, feijão, milho e outros grãos' },
+                { id: 'cat_3', nome: 'Padaria', descricao: 'Pães, bolos e produtos de padaria' },
+                { id: 'cat_4', nome: 'Laticínios', descricao: 'Leite, queijo e outros produtos lácteos' },
+                { id: 'cat_5', nome: 'Carnes', descricao: 'Produtos de origem animal' },
+                { id: 'cat_6', nome: 'Enlatados', descricao: 'Alimentos enlatados e conservas' },
+                { id: 'cat_7', nome: 'Outros', descricao: 'Outros tipos de alimentos' }
+            ];
+            
+            localStorage.setItem(STORAGE_KEYS.CATEGORIAS, JSON.stringify(categorias));
+        }
+    }
+    
+    // Get all categorias
+    function getCategorias() {
+        const storedCategorias = localStorage.getItem(STORAGE_KEYS.CATEGORIAS);
+        if (storedCategorias) {
+            try {
+                return JSON.parse(storedCategorias);
             } catch (error) {
                 return [];
             }
@@ -116,40 +243,55 @@ document.addEventListener('DOMContentLoaded', function() {
         return [];
     }
     
-    // Save request to local storage
-    function saveRequest(request) {
-        let requests = [];
-        const storedRequests = localStorage.getItem(STORAGE_KEYS.REQUESTS);
-        
-        if (storedRequests) {
+    // Get all doacoes
+    function getDoacoes() {
+        const storedDoacoes = localStorage.getItem(STORAGE_KEYS.DOACOES);
+        if (storedDoacoes) {
             try {
-                requests = JSON.parse(storedRequests);
+                return JSON.parse(storedDoacoes);
             } catch (error) {
-                requests = [];
+                return [];
             }
         }
-        
-        requests.push(request);
-        localStorage.setItem(STORAGE_KEYS.REQUESTS, JSON.stringify(requests));
+        return [];
+    }
+    
+    // Get all itens
+    function getItens() {
+        const storedItens = localStorage.getItem(STORAGE_KEYS.ITENS);
+        if (storedItens) {
+            try {
+                return JSON.parse(storedItens);
+            } catch (error) {
+                return [];
+            }
+        }
+        return [];
+    }
+    
+    // Get all impactos
+    function getImpactos() {
+        const storedImpactos = localStorage.getItem(STORAGE_KEYS.IMPACTOS);
+        if (storedImpactos) {
+            try {
+                return JSON.parse(storedImpactos);
+            } catch (error) {
+                return [];
+            }
+        }
+        return [];
     }
     
     // Update statistics on the page
     function updateStatistics() {
-        const donations = getDonations();
+        const doacoes = getDoacoes();
+        const impactos = getImpactos();
         
         // Calculate total food donated
         let totalKg = 0;
-        let totalUnits = 0;
         
-        donations.forEach(donation => {
-            const quantityStr = donation.quantity;
-            if (quantityStr.includes('kg')) {
-                const kg = parseFloat(quantityStr.replace('kg', '').trim());
-                if (!isNaN(kg)) totalKg += kg;
-            } else if (quantityStr.includes('units') || quantityStr.includes('unidades')) {
-                const units = parseInt(quantityStr.replace('units', '').replace('unidades', '').trim());
-                if (!isNaN(units)) totalUnits += units;
-            }
+        impactos.forEach(impacto => {
+            totalKg += parseFloat(impacto.quantidade_alimentos);
         });
         
         // Update DOM if elements exist
@@ -159,7 +301,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Calculate unique donors
-        const uniqueDonors = new Set(donations.map(d => d.donorId)).size;
+        const uniqueDonors = new Set(
+            doacoes.map(d => {
+                const item = getItens().find(i => i.id === d.id_item);
+                return item ? item.id_doador : null;
+            }).filter(id => id !== null)
+        ).size;
+        
         const businessesStat = document.querySelector('.stat-item:nth-child(2) h3');
         if (businessesStat) {
             businessesStat.textContent = uniqueDonors.toString();
@@ -167,9 +315,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Calculate unique NGOs
         const uniqueNgos = new Set(
-            donations
-                .filter(d => d.status === 'requested' || d.status === 'completed')
-                .map(d => d.requesterId)
+            doacoes
+                .filter(d => d.id_ong !== null)
+                .map(d => d.id_ong)
         ).size;
         
         const ngosStat = document.querySelector('.stat-item:nth-child(3) h3');
@@ -177,8 +325,12 @@ document.addEventListener('DOMContentLoaded', function() {
             ngosStat.textContent = uniqueNgos.toString();
         }
         
-        // Calculate CO2 savings (roughly estimated as 2.5kg CO2 per kg food waste avoided)
-        const co2Saved = totalKg * 2.5;
+        // Calculate CO2 savings
+        let co2Saved = 0;
+        impactos.forEach(impacto => {
+            co2Saved += parseFloat(impacto.reducao_co2);
+        });
+        
         const co2Stat = document.querySelector('.stat-item:nth-child(4) h3');
         if (co2Stat) {
             co2Stat.textContent = `${co2Saved.toFixed(0)} kg`;
@@ -187,61 +339,113 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Sample data for demonstration
     function initializeSampleData() {
-        const donations = getDonations();
+        // Check if data already exists
+        const doacoes = getDoacoes();
+        const itens = getItens();
+        const impactos = getImpactos();
         
-        if (donations.length === 0) {
-            // Only add sample data if none exists
-            const sampleDonations = [
+        if (doacoes.length === 0 && itens.length === 0) {
+            // Create sample category if not exists
+            initializeCategories();
+            
+            // Create sample items
+            const sampleItems = [
                 {
-                    id: 'donation_sample1',
-                    foodName: 'Maçãs',
-                    foodCategory: 'fruits',
-                    quantity: '15 kg',
-                    expirationDate: '2023-08-15',
-                    address: 'Av. Paulista, 1000 - São Paulo',
-                    pickupTimes: 'Segunda a Sexta, 10h às 18h',
-                    donorId: 'user_sample1',
-                    donorName: 'Supermercado Boa Compra',
-                    donorEmail: 'contato@boacompra.com.br',
-                    status: 'available',
-                    createdAt: '2023-08-01T10:30:00Z'
+                    id: 'item_sample1',
+                    descricao: 'Maçãs',
+                    estado: 'Bom',
+                    id_doador: 'user_sample1',
+                    id_categoria: 'cat_1'
                 },
                 {
-                    id: 'donation_sample2',
-                    foodName: 'Arroz',
-                    foodCategory: 'grains',
-                    quantity: '20 kg',
-                    expirationDate: '2023-12-31',
-                    address: 'Rua Augusta, 500 - São Paulo',
-                    pickupTimes: 'Segunda a Sábado, 9h às 17h',
-                    donorId: 'user_sample2',
-                    donorName: 'Mercado Família',
-                    donorEmail: 'doacao@mercadofamilia.com.br',
-                    status: 'requested',
-                    requesterId: 'user_ngo1',
-                    requesterName: 'Ong Alimentare',
-                    createdAt: '2023-08-02T14:45:00Z'
+                    id: 'item_sample2',
+                    descricao: 'Arroz',
+                    estado: 'Bom',
+                    id_doador: 'user_sample2',
+                    id_categoria: 'cat_2'
                 },
                 {
-                    id: 'donation_sample3',
-                    foodName: 'Pão Francês',
-                    foodCategory: 'bakery',
-                    quantity: '50 unidades',
-                    expirationDate: '2023-08-08',
-                    address: 'Rua da Consolação, 200 - São Paulo',
-                    pickupTimes: 'Todos os dias, após 19h',
-                    donorId: 'user_sample3',
-                    donorName: 'Padaria Trigo Dourado',
-                    donorEmail: 'padaria@trigodourado.com.br',
-                    status: 'completed',
-                    requesterId: 'user_ngo2',
-                    requesterName: 'Casa de Apoio Esperança',
-                    createdAt: '2023-08-03T18:20:00Z',
-                    completedAt: '2023-08-03T20:15:00Z'
+                    id: 'item_sample3',
+                    descricao: 'Pão Francês',
+                    estado: 'Bom',
+                    id_doador: 'user_sample3',
+                    id_categoria: 'cat_3'
                 }
             ];
             
-            localStorage.setItem(STORAGE_KEYS.DONATIONS, JSON.stringify(sampleDonations));
+            localStorage.setItem(STORAGE_KEYS.ITENS, JSON.stringify(sampleItems));
+            
+            // Create sample donations
+            const sampleDoacoes = [
+                {
+                    id: 'doacao_sample1',
+                    id_item: 'item_sample1',
+                    id_ong: null,
+                    data_doacao: '2023-08-01T10:30:00Z',
+                    tipo_entrega: 'Retirada',
+                    quantidade: '15',
+                    unidade: 'kg',
+                    endereco_coleta: 'Av. Paulista, 1000 - São Paulo',
+                    horarios_coleta: 'Segunda a Sexta, 10h às 18h',
+                    expirationDate: '2023-08-15',
+                    status: 'available'
+                },
+                {
+                    id: 'doacao_sample2',
+                    id_item: 'item_sample2',
+                    id_ong: 'user_ngo1',
+                    data_doacao: '2023-08-02T14:45:00Z',
+                    tipo_entrega: 'Entrega',
+                    quantidade: '20',
+                    unidade: 'kg',
+                    endereco_coleta: 'Rua Augusta, 500 - São Paulo',
+                    horarios_coleta: 'Segunda a Sábado, 9h às 17h',
+                    expirationDate: '2023-12-31',
+                    status: 'requested'
+                },
+                {
+                    id: 'doacao_sample3',
+                    id_item: 'item_sample3',
+                    id_ong: 'user_ngo2',
+                    data_doacao: '2023-08-03T18:20:00Z',
+                    tipo_entrega: 'Retirada',
+                    quantidade: '50',
+                    unidade: 'unidades',
+                    endereco_coleta: 'Rua da Consolação, 200 - São Paulo',
+                    horarios_coleta: 'Todos os dias, após 19h',
+                    expirationDate: '2023-08-08',
+                    status: 'completed'
+                }
+            ];
+            
+            localStorage.setItem(STORAGE_KEYS.DOACOES, JSON.stringify(sampleDoacoes));
+            
+            // Create sample environmental impacts
+            const sampleImpactos = [
+                {
+                    id: 'impacto_sample1',
+                    id_doacao: 'doacao_sample1',
+                    quantidade_alimentos: 15,
+                    reducao_co2: 37.5, // 15kg * 2.5
+                    data_calculo: '2023-08-01T10:35:00Z'
+                },
+                {
+                    id: 'impacto_sample2',
+                    id_doacao: 'doacao_sample2',
+                    quantidade_alimentos: 20,
+                    reducao_co2: 50, // 20kg * 2.5
+                    data_calculo: '2023-08-02T14:50:00Z'
+                },
+                {
+                    id: 'impacto_sample3',
+                    id_doacao: 'doacao_sample3',
+                    quantidade_alimentos: 15, // Assuming 50 units = 15kg
+                    reducao_co2: 37.5, // 15kg * 2.5
+                    data_calculo: '2023-08-03T18:25:00Z'
+                }
+            ];
+            
+            localStorage.setItem(STORAGE_KEYS.IMPACTOS, JSON.stringify(sampleImpactos));
         }
     }
     

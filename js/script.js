@@ -66,6 +66,23 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.target === donationModal) closeModal(donationModal);
     });
     
+    // Toggle additional fields based on registration type
+    const registerTypeSelect = document.getElementById('registerType');
+    if (registerTypeSelect) {
+        const cpfField = document.getElementById('cpfField');
+        const cnpjField = document.getElementById('cnpjField');
+        
+        registerTypeSelect.addEventListener('change', function() {
+            if (this.value === 'business') {
+                if (cpfField) cpfField.style.display = 'block';
+                if (cnpjField) cnpjField.style.display = 'none';
+            } else if (this.value === 'ngo') {
+                if (cpfField) cpfField.style.display = 'none';
+                if (cnpjField) cnpjField.style.display = 'block';
+            }
+        });
+    }
+    
     // Contact form submission
     const contactForm = document.getElementById('contactForm');
     if (contactForm) {

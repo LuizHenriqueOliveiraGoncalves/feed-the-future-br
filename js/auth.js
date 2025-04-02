@@ -18,28 +18,42 @@ document.addEventListener('DOMContentLoaded', function() {
             // In a real app, you'd make an API call here
             // For demo purposes, we'll simulate authentication
             if (email && password) {
-                // Simulate successful login
-                const mockUserData = {
-                    id: 'user_' + Math.random().toString(36).substr(2, 9),
-                    name: email.split('@')[0],
-                    email: email,
-                    type: email.includes('ong') ? 'ngo' : 'business',
-                    createdAt: new Date().toISOString()
-                };
+                // Get all registered users
+                const usersData = localStorage.getItem('feedthefuture_users');
+                let users = [];
                 
-                // Save to localStorage (in a real app, you'd store a JWT token)
-                const mockToken = 'mock_token_' + Math.random().toString(36).substr(2, 16);
-                localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, mockToken);
-                localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(mockUserData));
+                if (usersData) {
+                    try {
+                        users = JSON.parse(usersData);
+                    } catch (error) {
+                        console.error('Error parsing user data:', error);
+                    }
+                }
                 
-                // Show success toast
-                showToast(`Bem-vindo(a) de volta, ${mockUserData.name}!`, 'success');
+                // Check if user exists
+                const user = users.find(u => u.email === email);
                 
-                // Close the modal
-                closeModal(document.getElementById('loginModal'));
-                
-                // Update UI to logged in state
-                updateAuthUI();
+                if (user && user.password === password) { // In a real app, we'd properly hash and check passwords
+                    // Save to localStorage (in a real app, you'd store a JWT token)
+                    const mockToken = 'mock_token_' + Math.random().toString(36).substr(2, 16);
+                    localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, mockToken);
+                    
+                    // Don't store password in session data
+                    const sessionUser = {...user};
+                    delete sessionUser.password;
+                    localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(sessionUser));
+                    
+                    // Show success toast
+                    showToast(`Bem-vindo(a) de volta, ${user.nome}!`, 'success');
+                    
+                    // Close the modal
+                    closeModal(document.getElementById('loginModal'));
+                    
+                    // Update UI to logged in state
+                    updateAuthUI();
+                } else {
+                    showToast('Email ou senha incorretos', 'error');
+                }
             } else {
                 // Show error
                 showToast('Por favor, preencha todos os campos', 'error');
@@ -53,15 +67,23 @@ document.addEventListener('DOMContentLoaded', function() {
         registerForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
-            const name = document.getElementById('registerName').value;
+            const nome = document.getElementById('registerName').value;
             const email = document.getElementById('registerEmail').value;
-            const type = document.getElementById('registerType').value;
+            const tipo = document.getElementById('registerType').value;
             const password = document.getElementById('registerPassword').value;
             const confirmPassword = document.getElementById('registerConfirmPassword').value;
             
+            // New fields based on the DER
+            const cpf = document.getElementById('registerCPF').value;
+            const telefone = document.getElementById('registerPhone').value;
+            const endereco = document.getElementById('registerAddress').value;
+            
+            // For ONG, we'll need additional fields
+            const cnpj = tipo === 'ngo' ? document.getElementById('registerCNPJ').value : '';
+            
             // Simple validation
-            if (!name || !email || !type || !password) {
-                showToast('Por favor, preencha todos os campos', 'error');
+            if (!nome || !email || !tipo || !password || !telefone || !endereco) {
+                showToast('Por favor, preencha todos os campos obrigatórios', 'error');
                 return;
             }
             
@@ -70,23 +92,83 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            // In a real app, you'd make an API call here
-            // For demo purposes, we'll simulate registration
-            const mockUserData = {
-                id: 'user_' + Math.random().toString(36).substr(2, 9),
-                name: name,
+            // CPF validation for individuals, CNPJ for NGOs
+            if (tipo === 'business' && !cpf) {
+                showToast('CPF é obrigatório para estabelecimentos', 'error');
+                return;
+            }
+            
+            if (tipo === 'ngo' && !cnpj) {
+                showToast('CNPJ é obrigatório para ONGs', 'error');
+                return;
+            }
+            
+            // Get existing users to check for duplicates
+            const usersData = localStorage.getItem('feedthefuture_users');
+            let users = [];
+            
+            if (usersData) {
+                try {
+                    users = JSON.parse(usersData);
+                } catch (error) {
+                    console.error('Error parsing user data:', error);
+                }
+            }
+            
+            // Check if email already exists
+            if (users.some(u => u.email === email)) {
+                showToast('Este email já está cadastrado', 'error');
+                return;
+            }
+            
+            // Generate a new user ID
+            const userId = 'user_' + Math.random().toString(36).substr(2, 9);
+            
+            // Create the user object according to the DER "pessoas" table
+            const userData = {
+                id: userId,
+                nome: nome,
                 email: email,
-                type: type,
+                tipo: tipo,
+                cpf: cpf,
+                cnpj: cnpj,
+                telefone: telefone,
+                endereco: endereco,
+                password: password, // In a real app, this would be hashed
                 createdAt: new Date().toISOString()
             };
             
-            // Save to localStorage (in a real app, you'd store a JWT token)
+            // Save to users collection
+            users.push(userData);
+            localStorage.setItem('feedthefuture_users', JSON.stringify(users));
+            
+            // Create an ONG entry if user type is NGO
+            if (tipo === 'ngo') {
+                const ongs = JSON.parse(localStorage.getItem('feedthefuture_ongs') || '[]');
+                
+                const ongData = {
+                    id_ong: `ong_${Math.random().toString(36).substr(2, 9)}`,
+                    id_pessoa: userId,
+                    nome: nome,
+                    cnpj: cnpj,
+                    endereco: endereco,
+                    telefone: telefone
+                };
+                
+                ongs.push(ongData);
+                localStorage.setItem('feedthefuture_ongs', JSON.stringify(ongs));
+            }
+            
+            // Save user data to session (without password)
+            const sessionUser = {...userData};
+            delete sessionUser.password;
+            
             const mockToken = 'mock_token_' + Math.random().toString(36).substr(2, 16);
             localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, mockToken);
-            localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(mockUserData));
+            localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(sessionUser));
             
             // Show success toast
-            showToast(`Cadastro realizado com sucesso! Bem-vindo(a), ${name}!`, 'success');
+            showToast(`Cadastro realizado com sucesso! Bem-vindo(a), ${nome}!`, 'success');
             
             // Close the modal
             closeModal(document.getElementById('registerModal'));
@@ -123,7 +205,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (isAuthenticated && user) {
             // Change login button to profile
             if (btnLogin) {
-                btnLogin.textContent = user.name;
+                btnLogin.textContent = user.nome;
                 btnLogin.href = '#profile';
                 btnLogin.classList.add('logged-in');
                 
@@ -148,10 +230,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const btnDoar = document.getElementById('btn-doar');
             const btnReceber = document.getElementById('btn-receber');
             
-            if (user.type === 'business') {
+            if (user.tipo === 'business') {
                 if (btnDoar) btnDoar.classList.remove('disabled');
                 if (btnReceber) btnReceber.classList.add('disabled');
-            } else if (user.type === 'ngo') {
+            } else if (user.tipo === 'ngo') {
                 if (btnDoar) btnDoar.classList.add('disabled');
                 if (btnReceber) btnReceber.classList.remove('disabled');
             }
@@ -182,7 +264,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function showUserMenu(user) {
         // In a real app, you might have a dropdown or modal with user options
         // For demo purposes, we'll just show a toast
-        showToast(`Olá ${user.name}! Você está logado como ${user.type === 'business' ? 'Estabelecimento' : 'ONG'}`, 'success');
+        showToast(`Olá ${user.nome}! Você está logado como ${user.tipo === 'business' ? 'Estabelecimento' : 'ONG'}`, 'success');
     }
     
     // Logout function
