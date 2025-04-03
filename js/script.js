@@ -1,188 +1,177 @@
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Mobile navigation toggle
-    const menuToggle = document.querySelector('.menu-toggle');
-    const nav = document.querySelector('nav');
+    // Mobile Menu Toggle
+    const menuToggle = document.getElementById('menu-toggle');
+    const nav = document.getElementById('nav');
     
     if (menuToggle) {
-        menuToggle.addEventListener('click', () => {
+        menuToggle.addEventListener('click', function() {
             nav.classList.toggle('active');
         });
     }
-    
-    // Close menu when clicking outside
-    document.addEventListener('click', (e) => {
-        if (nav && nav.classList.contains('active') && !e.target.closest('nav') && !e.target.closest('.menu-toggle')) {
-            nav.classList.remove('active');
+
+    // Modal functionality
+    const loginBtn = document.getElementById('loginBtn');
+    const registerBtn = document.getElementById('registerBtn');
+    const registerBtnHero = document.getElementById('registerBtnHero');
+    const loginModal = document.getElementById('loginModal');
+    const registerModal = document.getElementById('registerModal');
+    const closeLoginModal = document.getElementById('closeLoginModal');
+    const closeRegisterModal = document.getElementById('closeRegisterModal');
+    const showRegisterModal = document.getElementById('showRegisterModal');
+    const showLoginModal = document.getElementById('showLoginModal');
+
+    // Open modals
+    if (loginBtn) {
+        loginBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            loginModal.style.display = 'block';
+        });
+    }
+
+    if (registerBtn) {
+        registerBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            registerModal.style.display = 'block';
+        });
+    }
+
+    if (registerBtnHero) {
+        registerBtnHero.addEventListener('click', function(e) {
+            e.preventDefault();
+            registerModal.style.display = 'block';
+        });
+    }
+
+    // Close modals
+    if (closeLoginModal) {
+        closeLoginModal.addEventListener('click', function() {
+            loginModal.style.display = 'none';
+        });
+    }
+
+    if (closeRegisterModal) {
+        closeRegisterModal.addEventListener('click', function() {
+            registerModal.style.display = 'none';
+        });
+    }
+
+    // Switch between modals
+    if (showRegisterModal) {
+        showRegisterModal.addEventListener('click', function(e) {
+            e.preventDefault();
+            loginModal.style.display = 'none';
+            registerModal.style.display = 'block';
+        });
+    }
+
+    if (showLoginModal) {
+        showLoginModal.addEventListener('click', function(e) {
+            e.preventDefault();
+            registerModal.style.display = 'none';
+            loginModal.style.display = 'block';
+        });
+    }
+
+    // Close modals when clicking outside
+    window.addEventListener('click', function(e) {
+        if (e.target === loginModal) {
+            loginModal.style.display = 'none';
+        }
+        if (e.target === registerModal) {
+            registerModal.style.display = 'none';
         }
     });
 
-    // Modal functionality
-    const loginModal = document.getElementById('loginModal');
-    const registerModal = document.getElementById('registerModal');
-    const donationModal = document.getElementById('donationModal');
-    const btnLogin = document.getElementById('btn-login');
-    const btnRegister = document.getElementById('btn-register');
-    const btnDoar = document.getElementById('btn-doar');
-    const switchToRegister = document.getElementById('switchToRegister');
-    const switchToLogin = document.getElementById('switchToLogin');
-    const closeBtns = document.querySelectorAll('.close');
-    
-    // Open modals
-    if (btnLogin) btnLogin.addEventListener('click', () => openModal(loginModal));
-    if (btnRegister) btnRegister.addEventListener('click', () => openModal(registerModal));
-    if (btnDoar) btnDoar.addEventListener('click', () => openModal(donationModal));
-    
-    // Switch between login and register
-    if (switchToRegister) {
-        switchToRegister.addEventListener('click', (e) => {
-            e.preventDefault();
-            closeModal(loginModal);
-            openModal(registerModal);
-        });
-    }
-    
-    if (switchToLogin) {
-        switchToLogin.addEventListener('click', (e) => {
-            e.preventDefault();
-            closeModal(registerModal);
-            openModal(loginModal);
-        });
-    }
-    
-    // Close modals with X button
-    closeBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            closeModal(loginModal);
-            closeModal(registerModal);
-            closeModal(donationModal);
-        });
-    });
-    
-    // Close modals when clicking outside
-    window.addEventListener('click', (e) => {
-        if (e.target === loginModal) closeModal(loginModal);
-        if (e.target === registerModal) closeModal(registerModal);
-        if (e.target === donationModal) closeModal(donationModal);
-    });
-    
-    // Toggle additional fields based on registration type
-    const registerTypeSelect = document.getElementById('registerType');
-    if (registerTypeSelect) {
-        const cpfField = document.getElementById('cpfField');
-        const cnpjField = document.getElementById('cnpjField');
-        
-        registerTypeSelect.addEventListener('change', function() {
+    // Register type selection logic
+    const regType = document.getElementById('regType');
+    const businessFields = document.querySelectorAll('.business-field');
+    const ngoFields = document.querySelectorAll('.ngo-field');
+
+    if (regType) {
+        regType.addEventListener('change', function() {
             if (this.value === 'business') {
-                if (cpfField) cpfField.style.display = 'block';
-                if (cnpjField) cnpjField.style.display = 'none';
+                businessFields.forEach(field => field.style.display = 'block');
+                ngoFields.forEach(field => field.style.display = 'none');
             } else if (this.value === 'ngo') {
-                if (cpfField) cpfField.style.display = 'none';
-                if (cnpjField) cnpjField.style.display = 'block';
+                businessFields.forEach(field => field.style.display = 'none');
+                ngoFields.forEach(field => field.style.display = 'block');
+            } else {
+                businessFields.forEach(field => field.style.display = 'none');
+                ngoFields.forEach(field => field.style.display = 'none');
             }
         });
     }
-    
-    // Contact form submission
+
+    // Form submissions
     const contactForm = document.getElementById('contactForm');
+    const newsletterForm = document.getElementById('newsletterForm');
+    
     if (contactForm) {
         contactForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            const name = document.getElementById('name').value;
-            const email = document.getElementById('email').value;
-            const message = document.getElementById('message').value;
-            
-            // Here you'd normally send this data to a server
-            console.log({name, email, message});
-            
-            // Show success message
-            showToast('Mensagem enviada com sucesso! Entraremos em contato em breve.', 'success');
-            
-            // Reset form
-            contactForm.reset();
+            showToast('Mensagem enviada com sucesso!');
+            this.reset();
         });
     }
     
-    // Newsletter form
-    const newsletterForm = document.getElementById('newsletterForm');
     if (newsletterForm) {
         newsletterForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            const email = this.querySelector('input[type="email"]').value;
-            
-            // Here you'd normally send this to a server
-            console.log({email});
-            
-            // Show success message
-            showToast('Inscrição realizada com sucesso!', 'success');
-            
-            // Reset form
+            showToast('Inscrição realizada com sucesso!');
             this.reset();
         });
     }
 
-    // Smooth scrolling for anchor links
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        if (anchor.getAttribute('href').length > 1) {
-            anchor.addEventListener('click', function(e) {
-                if (this.getAttribute('href') === '#') return;
-                
-                e.preventDefault();
-                const targetId = this.getAttribute('href');
-                if (targetId === '#switchToRegister' || targetId === '#switchToLogin') return;
-                
-                const targetElement = document.querySelector(targetId);
-                if (targetElement) {
-                    // Close mobile menu if open
-                    if (nav && nav.classList.contains('active')) {
-                        nav.classList.remove('active');
-                    }
-                    
-                    window.scrollTo({
-                        top: targetElement.offsetTop - 90,
-                        behavior: 'smooth'
-                    });
-                }
-            });
-        }
-    });
-});
-
-// Helper functions for modals
-function openModal(modal) {
-    if (modal) modal.style.display = 'block';
-}
-
-function closeModal(modal) {
-    if (modal) modal.style.display = 'none';
-}
-
-// Toast notification function
-function showToast(message, type = 'success') {
-    const toast = document.getElementById('toast');
-    const toastMessage = toast.querySelector('.toast-message');
-    const icon = toast.querySelector('i');
-    
-    // Set message
-    toastMessage.textContent = message;
-    
-    // Set icon based on type
-    if (type === 'success') {
-        icon.className = 'fas fa-check-circle';
-        icon.style.color = 'var(--success-color)';
-    } else if (type === 'error') {
-        icon.className = 'fas fa-exclamation-circle';
-        icon.style.color = 'var(--error-color)';
-    } else if (type === 'warning') {
-        icon.className = 'fas fa-exclamation-triangle';
-        icon.style.color = 'var(--warning-color)';
+    // Toast notification
+    function showToast(message) {
+        const toast = document.getElementById('toast');
+        const toastMessage = document.getElementById('toastMessage');
+        
+        toastMessage.textContent = message;
+        toast.classList.add('show');
+        
+        setTimeout(function() {
+            toast.classList.remove('show');
+        }, 3000);
     }
     
-    // Show toast
-    toast.classList.add('show');
-    
-    // Hide after 3 seconds (matching animation duration)
-    setTimeout(() => {
-        toast.classList.remove('show');
-    }, 3000);
-}
+    // Smooth scrolling for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            if (this.getAttribute('href') !== '#' && 
+                !this.getAttribute('id')?.includes('show') && 
+                this.getAttribute('href').startsWith('#')) {
+                e.preventDefault();
+                
+                const targetId = this.getAttribute('href');
+                if (!targetId) return;
+                
+                const targetElement = document.querySelector(targetId);
+                if (!targetElement) return;
+                
+                window.scrollTo({
+                    top: targetElement.offsetTop - 80,
+                    behavior: 'smooth'
+                });
+            }
+        });
+    });
+
+    // Header scroll effect
+    const header = document.getElementById('header');
+    window.addEventListener('scroll', function() {
+        if (window.scrollY > 50) {
+            header.style.padding = '10px 0';
+            header.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.1)';
+        } else {
+            header.style.padding = '15px 0';
+            header.style.boxShadow = '';
+        }
+    });
+
+    // Initialize any other components
+    window.addEventListener('load', function() {
+        // Initialization code here if needed
+    });
+});
