@@ -375,6 +375,15 @@ nav ul li a:hover::after {
     color: var(--text-light);
 }
 
+/* Button container for centered buttons */
+.buttons-container {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 40px;
+    flex-wrap: wrap;
+}
+
 /* Impact Section */
 .impact {
     padding: 80px 0;
@@ -434,6 +443,7 @@ nav ul li a:hover::after {
     border-radius: var(--border-radius);
     box-shadow: var(--shadow);
     overflow: hidden;
+    margin-bottom: 20px;
 }
 
 /* Contact Section */
@@ -734,6 +744,11 @@ footer {
     }
 }
 
+/* Utility classes */
+.text-center {
+    text-align: center;
+}
+
 /* Responsive styles */
 @media (max-width: 992px) {
     .hero .container,
@@ -778,6 +793,8 @@ footer {
         box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
         clip-path: polygon(0 0, 100% 0, 100% 0, 0 0);
         transition: var(--transition);
+        overflow: hidden;
+        padding: 0;
     }
     
     nav.active {
@@ -787,10 +804,22 @@ footer {
     nav ul {
         flex-direction: column;
         padding: 20px 0;
+        width: 100%;
     }
     
     nav ul li {
         margin: 10px 0;
+        width: 100%;
+        text-align: center;
+    }
+    
+    nav ul li a, 
+    nav ul li a.btn-login, 
+    nav ul li a.btn-register {
+        display: block;
+        padding: 10px;
+        width: 80%;
+        margin: 0 auto;
     }
     
     .contact-container {
@@ -807,5 +836,18 @@ footer {
     
     .step {
         min-width: 100%;
+    }
+    
+    .hero-buttons,
+    .buttons-container {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .hero-buttons a,
+    .buttons-container a,
+    .buttons-container button {
+        width: 100%;
+        margin-bottom: 10px;
     }
 }
